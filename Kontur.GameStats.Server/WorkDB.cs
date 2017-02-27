@@ -112,23 +112,57 @@ namespace Kontur.GameStats.Server
             return result;
         }
 
-        public MatchInfo GetServerMatch(string endpoint, string timestamp)
+        public MatchInfo GetServerMatch(string endpoint, DateTime timestamp)
         {
+            MatchInfo matchInfo = null;
+
             dbConnection.Open();
 
             SqlCommand dbCommand = new SqlCommand("SELECT * FROM Matches WHERE EndPoint = @EndPoint AND TimeStamp = @TimeStamp", dbConnection);
+            dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
+            dbCommand.Parameters.AddWithValue("@TimeStamp", timestamp);
             SqlDataReader reader = dbCommand.ExecuteReader();
+            Guid MatchId = Guid.Empty;
             while (reader.Read())
             {
-                //int id = (int)reader["id"];
-                //string _endpoint = (string)reader["endpoint"];
+                MatchId = (Guid)reader["Id"];
+                string map = (string)reader["Map"];
+                string gameMode = (string)reader["GameMode"];
+                int fragLimit = (int)reader["FragLimit"];
+                int timeLimit = (int)reader["TimeLimit"];
+                double timeElapsed = (double)reader["TimeElapsed"];
+
+                matchInfo = new MatchInfo(map.Trim(), gameMode.Trim(), fragLimit, timeLimit, timeElapsed);
                 break;
             }
             reader.Close();
 
+            if (!String.IsNullOrWhiteSpace(MatchId.ToString()))
+            {
+                dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE MatchId = @MatchId", dbConnection);
+                dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
+
+                reader = dbCommand.ExecuteReader();
+
+                List<MatchInfo.ScoreboardItem> scoreboardItems = new List<MatchInfo.ScoreboardItem>();
+
+                while (reader.Read())
+                {
+                    string name = (string)reader["Name"];
+                    int frags = (int)reader["Frags"];
+                    int kills = (int)reader["Kills"];
+                    int deaths = (int)reader["Deaths"];
+
+                    scoreboardItems.Add(new MatchInfo.ScoreboardItem(name.Trim(), frags, kills, deaths));
+                }
+                reader.Close();
+
+                matchInfo.scoreboard = scoreboardItems.ToArray();
+            }
+
             dbConnection.Close();
 
-            throw new NotImplementedException();
+            return matchInfo;
         }
 
         public bool PutServerMatch(string endpoint, DateTime timestamp, MatchInfo match)
@@ -165,6 +199,8 @@ namespace Kontur.GameStats.Server
 
                 result = true;
             }
+
+            dbConnection.Close();
 
             return result;
         }

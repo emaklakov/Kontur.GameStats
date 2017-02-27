@@ -123,19 +123,25 @@ namespace Kontur.GameStats.Server
             try
             {
                 string endpoint = ExtractEndpoint(listenerContext.Request);
-                string timestamp = ExtractTimestamp(listenerContext.Request);
+                DateTime timestamp = DateTimeOffset.Parse(ExtractTimestamp(listenerContext.Request)).UtcDateTime;
 
                 MatchInfo matchInfo = workDb.GetServerMatch(endpoint, timestamp);
-                string matchInfoJson = JsonConvert.SerializeObject(matchInfo);
 
-                using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
+                if (matchInfo == null)
                 {
-                    writer.Write(matchInfoJson);
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    listenerContext.Response.Close();
+                    return;
                 }
+
+                string matchInfoJson = JsonConvert.SerializeObject(matchInfo);
 
                 listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
                 listenerContext.Response.ContentType = "application/json";
-                listenerContext.Response.Close();
+                using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+                {
+                    writer.Write(matchInfoJson);
+                }
             }
             catch (Exception error)
             {
