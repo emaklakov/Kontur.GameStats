@@ -107,14 +107,36 @@ namespace Kontur.GameStats.Server
         }
 
         public void GetServerStats(HttpListenerContext listenerContext)
-        {
-            string statsJson = "";
-
-            listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
-            listenerContext.Response.ContentType = "application/json";
-            using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+        {   
+            try
             {
-                writer.WriteLine(statsJson);
+                string endpoint = ExtractEndpoint(listenerContext.Request);
+
+                ServerStats serverStats = workDb.GetServerStats(endpoint);
+
+                if (serverStats == null)
+                {
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    listenerContext.Response.Close();
+                    return;
+                }
+
+                string statsJson = JsonConvert.SerializeObject(serverStats);
+
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.ContentType = "application/json";
+                using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+                {
+                    writer.WriteLine(statsJson);
+                }
+            }
+            catch (Exception error)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                Console.ResetColor();
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                listenerContext.Response.Close();
             }
         }
 

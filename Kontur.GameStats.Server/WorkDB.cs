@@ -205,6 +205,100 @@ namespace Kontur.GameStats.Server
             return result;
         }
 
+        public ServerStats GetServerStats(string endpoint)
+        {
+            ServerStats serverStats = null;
+
+            List<MatchInfoStat> matches = new List<MatchInfoStat>();
+            List<MatchInfo.ScoreboardItem> scoreboards = new List<MatchInfo.ScoreboardItem>();
+
+            dbConnection.Open();
+
+            SqlCommand dbCommand = new SqlCommand("SELECT * FROM Matches WHERE EndPoint = @EndPoint", dbConnection);
+            dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
+
+            SqlDataReader reader = dbCommand.ExecuteReader();
+            Guid MatchId = Guid.Empty;
+            while (reader.Read())
+            {
+                MatchId = (Guid)reader["Id"];
+                DateTime timeStamp = (DateTime)reader["TimeStamp"];
+                string map = (string)reader["Map"];
+                string gameMode = (string)reader["GameMode"];
+                int fragLimit = (int)reader["FragLimit"];
+                int timeLimit = (int)reader["TimeLimit"];
+                double timeElapsed = (double)reader["TimeElapsed"];
+
+                MatchInfoStat matchInfo = new MatchInfoStat(timeStamp, map.Trim(), gameMode.Trim(), fragLimit, timeLimit, timeElapsed);
+                matches.Add(matchInfo);
+            }
+            reader.Close();
+
+            if (!String.IsNullOrWhiteSpace(MatchId.ToString()))
+            {
+                dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE MatchId = @MatchId", dbConnection);
+                dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
+
+                reader = dbCommand.ExecuteReader();
+
+                
+
+                while (reader.Read())
+                {
+                    string name = (string)reader["Name"];
+                    int frags = (int)reader["Frags"];
+                    int kills = (int)reader["Kills"];
+                    int deaths = (int)reader["Deaths"];
+
+                    scoreboards.Add(new MatchInfo.ScoreboardItem(name.Trim(), frags, kills, deaths));
+                }
+                reader.Close();
+            }
+
+            var matchesCountGroupByDate = matches
+                        .GroupBy(match => new DateTime(match.timeStamp.Year, match.timeStamp.Month, match.timeStamp.Day))
+                        .Select(group => group.Count());
+
+            var playersCountGroupByName = scoreboards
+                        .GroupBy(scoreboard => scoreboard.name)
+                        .Select(group => group.Count());
+
+            serverStats = new ServerStats()
+            {
+                totalMatchesPlayed = matches.Count,
+                maximumMatchesPerDay = matchesCountGroupByDate.Count() == 0 ? 0 : matchesCountGroupByDate.Max(),
+                averageMatchesPerDay = matchesCountGroupByDate.Count() == 0 ? 0 : matchesCountGroupByDate.Average(),
+                maximumPopulation = playersCountGroupByName.Count() == 0 ? 0 : playersCountGroupByName.Max(),
+                averagePopulation = playersCountGroupByName.Count() == 0 ? 0 : playersCountGroupByName.Average(),
+                top5GameModes = GetTop5GameModes(matches),
+                top5Maps = GetTop5Maps(matches)
+            };
+
+            dbConnection.Close();
+
+            return serverStats;
+        }
+
+        private static string[] GetTop5GameModes(List<MatchInfoStat> matches)
+        {
+            return matches
+                .GroupBy(match => match.gameMode)
+                .OrderByDescending(group => group.Count())
+                .Select(group => group.Key)
+                .Take(5)
+                .ToArray();
+        }
+
+        private static string[] GetTop5Maps(List<MatchInfoStat> matches)
+        {
+            return matches
+                .GroupBy(match => match.map)
+                .OrderByDescending(group => group.Count())
+                .Select(group => group.Key)
+                .Take(5)
+                .ToArray();
+        }
+
         public bool IsExistServer(string endpoint)
         {
             bool IsExist = false;

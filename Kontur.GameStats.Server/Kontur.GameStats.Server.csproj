@@ -68,8 +68,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\EndpointInfo.cs" />
+    <Compile Include="Models\MatchInfoStat.cs" />
     <Compile Include="Models\MatchInfo.cs" />
     <Compile Include="Models\ServerInfo.cs" />
+    <Compile Include="Models\ServerStats.cs" />
     <Compile Include="StatsAPI.cs" />
     <Compile Include="WorkDB.cs" />
     <Compile Include="StatServer.cs" />
