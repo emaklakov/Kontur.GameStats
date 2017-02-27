@@ -32,6 +32,7 @@ namespace Kontur.GameStats.Server
             {
                 server.Start(options.Prefix);
 
+                Console.WriteLine("Server is running");
                 Console.ReadKey(true);
             }
         }

@@ -11,6 +11,7 @@ namespace Kontur.GameStats.Server
         public StatServer()
         {
             listener = new HttpListener();
+            statsApi = new StatsAPI();
         }
         
         public void Start(string prefix)
@@ -19,21 +20,18 @@ namespace Kontur.GameStats.Server
             {
                 if (!isRunning)
                 {
-                    if (WorkDB.Connect())
+                    listener.Prefixes.Clear();
+                    listener.Prefixes.Add(prefix);
+                    listener.Start();
+
+                    listenerThread = new Thread(Listen)
                     {
-                        listener.Prefixes.Clear();
-                        listener.Prefixes.Add(prefix);
-                        listener.Start();
+                        IsBackground = true,
+                        Priority = ThreadPriority.Highest
+                    };
+                    listenerThread.Start();
 
-                        listenerThread = new Thread(Listen)
-                        {
-                            IsBackground = true,
-                            Priority = ThreadPriority.Highest
-                        };
-                        listenerThread.Start();
-
-                        isRunning = true;
-                    }  
+                    isRunning = true;
                 }
             }
         }
@@ -94,12 +92,82 @@ namespace Kontur.GameStats.Server
         {
             // TODO: implement request handling
 
-            listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
-            using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
-                writer.WriteLine("Hello, world!");
+            //Объект запроса
+            HttpListenerRequest request = listenerContext.Request;
+
+            Console.WriteLine("{1} {0}", request.RawUrl, request.HttpMethod);
+
+            string[] address = request.RawUrl.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (address.Length > 0)
+            {
+                if (address[0] == "servers")
+                {
+                    if (address[1] == "info")
+                    {
+                        // /servers/info GET   
+                        if (request.HttpMethod == System.Net.Http.HttpMethod.Get.Method)
+                        {
+                            statsApi.GetServersInfo(listenerContext);
+                        }          
+                        else
+                        {
+                            statsApi.HandleIncorrect(listenerContext);
+                        }   
+                    }
+                    else
+                    {
+                        switch (address[2])
+                        {
+                            case "info":
+                                // /servers/<endpoint>/info PUT, GET
+                                break;
+                            default:
+                                statsApi.HandleIncorrect(listenerContext);
+                                break;
+                        }
+                    }
+                }
+                else if (address[0] == "reports" && request.HttpMethod == System.Net.Http.HttpMethod.Get.Method)
+                {
+                    switch (address[1])
+                    {
+                        case "best-players":
+                            statsApi.GetBestPlayersReport(listenerContext);
+                            break; 
+                        default:
+                            statsApi.HandleIncorrect(listenerContext);
+                            break;
+                    }
+                }
+                else
+                {
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
+                        writer.WriteLine(String.Empty);
+                }
+            }
+            else
+            {
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
+                    writer.WriteLine(String.Empty);
+            }                                                                        
+
+            //var data_text = new StreamReader(
+            //    listenerContext.Request.InputStream,
+            //    listenerContext.Request.ContentEncoding).ReadToEnd();
+
+            //var cleaned_data = System.Web.HttpUtility.UrlDecode(data_text);
+
+            //listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+            //using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
+            //    writer.WriteLine("Hello, world!");
         }
 
         private readonly HttpListener listener;
+        
+        private readonly StatsAPI statsApi;
 
         private Thread listenerThread;
         private bool disposed;
