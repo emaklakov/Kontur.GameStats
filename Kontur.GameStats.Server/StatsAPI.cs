@@ -107,7 +107,7 @@ namespace Kontur.GameStats.Server
         }
 
         public void GetServerStats(HttpListenerContext listenerContext)
-        {   
+        {
             try
             {
                 string endpoint = ExtractEndpoint(listenerContext.Request);
@@ -116,14 +116,14 @@ namespace Kontur.GameStats.Server
 
                 if (serverStats == null)
                 {
-                    listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.NotFound;
                     listenerContext.Response.Close();
                     return;
                 }
 
                 string statsJson = JsonConvert.SerializeObject(serverStats);
 
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
                 listenerContext.Response.ContentType = "application/json";
                 using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
                 {
@@ -135,7 +135,7 @@ namespace Kontur.GameStats.Server
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
                 Console.ResetColor();
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
                 listenerContext.Response.Close();
             }
         }
@@ -151,14 +151,14 @@ namespace Kontur.GameStats.Server
 
                 if (matchInfo == null)
                 {
-                    listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.NotFound;
                     listenerContext.Response.Close();
                     return;
                 }
 
                 string matchInfoJson = JsonConvert.SerializeObject(matchInfo);
 
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
                 listenerContext.Response.ContentType = "application/json";
                 using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
                 {
@@ -170,13 +170,13 @@ namespace Kontur.GameStats.Server
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
                 Console.ResetColor();
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
                 listenerContext.Response.Close();
-            }  
+            }
         }
 
         public void PutServerMatch(HttpListenerContext listenerContext)
-        {       
+        {
             var inpStream = new StreamReader(listenerContext.Request.InputStream);
 
             string endpoint = ExtractEndpoint(listenerContext.Request);
@@ -187,15 +187,15 @@ namespace Kontur.GameStats.Server
                 {
                     DateTime timestamp = DateTimeOffset.Parse(ExtractTimestamp(listenerContext.Request)).UtcDateTime;
 
-                    MatchInfo matchInfo = JsonConvert.DeserializeObject<MatchInfo>(inpStream.ReadToEnd());         
+                    MatchInfo matchInfo = JsonConvert.DeserializeObject<MatchInfo>(inpStream.ReadToEnd());
 
                     if (workDb.PutServerMatch(endpoint, timestamp, matchInfo))
                     {
-                        listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                        listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
                     }
                     else
                     {
-                        listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                        listenerContext.Response.StatusCode = (int) HttpStatusCode.BadRequest;
                     }
                 }
                 catch (Exception error)
@@ -203,12 +203,12 @@ namespace Kontur.GameStats.Server
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
                     Console.ResetColor();
-                    listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
                 }
             }
             else
             {
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.BadRequest;
             }
 
             listenerContext.Response.Close();
@@ -216,14 +216,29 @@ namespace Kontur.GameStats.Server
 
         public void GetBestPlayersReport(HttpListenerContext listenerContext)
         {
-            string reportJson = "";
-
-            listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
-            listenerContext.Response.ContentType = "application/json";
-            using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+            try
             {
-                writer.WriteLine(reportJson);
+                int countPlayers = ExtractCountPlayers(listenerContext.Request);
+
+                BestPlayer[] bestPlayers = workDb.GetBestPlayersReport(countPlayers);
+
+                string reportJson = JsonConvert.SerializeObject(bestPlayers);
+
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.ContentType = "application/json";
+                using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+                {
+                    writer.WriteLine(reportJson);
+                }
             }
+            catch (Exception error)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                Console.ResetColor();
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                listenerContext.Response.Close();
+            }  
         }
 
         public void HandleIncorrect(HttpListenerContext listenerContext)
@@ -240,6 +255,14 @@ namespace Kontur.GameStats.Server
         private static string ExtractTimestamp(HttpListenerRequest request)
         {
             return request.RawUrl.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[3];
+        }
+
+        private static int ExtractCountPlayers(HttpListenerRequest request)
+        {
+            string[] par = request.RawUrl.Split(new char[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+            string count = par.Length > 2 ? request.RawUrl.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[2] : "0";
+
+            return Int32.Parse(count);
         }
     }
 }

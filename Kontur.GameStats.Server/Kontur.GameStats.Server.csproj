@@ -67,6 +67,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\BestPlayer.cs" />
     <Compile Include="Models\EndpointInfo.cs" />
     <Compile Include="Models\MatchInfoStat.cs" />
     <Compile Include="Models\MatchInfo.cs" />

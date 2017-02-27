@@ -239,9 +239,7 @@ namespace Kontur.GameStats.Server
                 dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE MatchId = @MatchId", dbConnection);
                 dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
 
-                reader = dbCommand.ExecuteReader();
-
-                
+                reader = dbCommand.ExecuteReader(); 
 
                 while (reader.Read())
                 {
@@ -323,6 +321,51 @@ namespace Kontur.GameStats.Server
             dbConnection.Close();
 
             return IsExist;
+        }
+
+        public BestPlayer[] GetBestPlayersReport(int countPlayers)
+        {
+            List<BestPlayer> players = new List<BestPlayer>();
+            List<MatchInfo.ScoreboardItem> scoreboards = new List<MatchInfo.ScoreboardItem>();
+
+            dbConnection.Open();
+            SqlCommand dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE Frags >= 10 AND Kills > 0", dbConnection);
+            SqlDataReader reader = dbCommand.ExecuteReader(); 
+
+            while (reader.Read())
+            {
+                string name = (string)reader["Name"];
+                int frags = (int)reader["Frags"];
+                int kills = (int)reader["Kills"];
+                int deaths = (int)reader["Deaths"];
+
+                scoreboards.Add(new MatchInfo.ScoreboardItem(name.Trim(), frags, kills, deaths));
+            }
+            reader.Close();
+
+            dbConnection.Close();
+
+            var playersCountGroupByName = scoreboards
+                        .GroupBy(scoreboard => scoreboard.name)
+                        .Select(group => new
+                        {
+                            name = group.Key,
+                            totalKills = group.Sum(s=> s.kills),
+                            totalDeaths = group.Sum(s => s.deaths)
+                        });
+
+            foreach (var player in playersCountGroupByName)
+            {
+                BestPlayer bestPlayer = new BestPlayer()
+                {
+                    name = player.name,
+                    killToDeathRatio = player.totalKills / player.totalDeaths
+                };
+
+                players.Add(bestPlayer);
+            }
+
+            return players.ToArray();
         }
     }
 }
