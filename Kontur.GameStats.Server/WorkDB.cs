@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
@@ -111,11 +112,71 @@ namespace Kontur.GameStats.Server
             return result;
         }
 
+        public MatchInfo GetServerMatch(string endpoint, string timestamp)
+        {
+            dbConnection.Open();
+
+            SqlCommand dbCommand = new SqlCommand("SELECT * FROM Matches WHERE EndPoint = @EndPoint AND TimeStamp = @TimeStamp", dbConnection);
+            SqlDataReader reader = dbCommand.ExecuteReader();
+            while (reader.Read())
+            {
+                //int id = (int)reader["id"];
+                //string _endpoint = (string)reader["endpoint"];
+                break;
+            }
+            reader.Close();
+
+            dbConnection.Close();
+
+            throw new NotImplementedException();
+        }
+
+        public bool PutServerMatch(string endpoint, DateTime timestamp, MatchInfo match)
+        {
+            bool result = false;
+
+            dbConnection.Open();
+
+            SqlCommand dbCommand = new SqlCommand("INSERT INTO Matches VALUES (@Id, @EndPoint, @TimeStampt, @Map, @GameMode, @FragLimit, @TimeLimit, @TimeElapsed)", dbConnection);
+            Guid MatchId = Guid.NewGuid();
+            dbCommand.Parameters.AddWithValue("@Id", MatchId);
+            dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
+            dbCommand.Parameters.AddWithValue("@TimeStampt", timestamp);
+            dbCommand.Parameters.AddWithValue("@Map", match.map);
+            dbCommand.Parameters.AddWithValue("@GameMode", match.gameMode);
+            dbCommand.Parameters.AddWithValue("@FragLimit", match.fragLimit);
+            dbCommand.Parameters.AddWithValue("@TimeLimit", match.timeLimit);
+            dbCommand.Parameters.AddWithValue("@TimeElapsed", match.timeElapsed);
+
+            int rows = -1;
+            rows = dbCommand.ExecuteNonQuery();
+            if (rows >= 0)
+            {
+                foreach (MatchInfo.ScoreboardItem scoreboardItem in match.scoreboard)
+                {
+                    dbCommand = new SqlCommand("INSERT INTO Scoreboards VALUES (@MatchId, @Name, @Frags, @Kills, @Deaths)", dbConnection);
+                    dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
+                    dbCommand.Parameters.AddWithValue("@Name", scoreboardItem.name);
+                    dbCommand.Parameters.AddWithValue("@Frags", scoreboardItem.frags);
+                    dbCommand.Parameters.AddWithValue("@Kills", scoreboardItem.kills);
+                    dbCommand.Parameters.AddWithValue("@Deaths", scoreboardItem.deaths);
+                    dbCommand.ExecuteNonQuery();
+                }
+
+                result = true;
+            }
+
+            return result;
+        }
+
         public bool IsExistServer(string endpoint)
         {
             bool IsExist = false;
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }     
 
             SqlCommand dbCommand = new SqlCommand("SELECT EndPoint FROM Servers WHERE EndPoint=@EndPoint", dbConnection);
             dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);

@@ -128,6 +128,19 @@ namespace Kontur.GameStats.Server
                                 else
                                     statsApi.HandleIncorrect(listenerContext);
                                 break;
+                            case "matches":
+                                // /servers/<endpoint>/matches/<timestamp> PUT, GET
+                                if (request.HttpMethod == System.Net.Http.HttpMethod.Get.Method)
+                                    statsApi.GetServerMatch(listenerContext);
+                                else if (request.HttpMethod == System.Net.Http.HttpMethod.Put.Method)
+                                    statsApi.PutServerMatch(listenerContext);
+                                else
+                                    statsApi.HandleIncorrect(listenerContext);
+                                break;
+                            case "stats":
+                                // /servers/<endpoint>/stats GET
+                                statsApi.GetServerStats(listenerContext);
+                                break;
                             default:
                                 statsApi.HandleIncorrect(listenerContext);
                                 break;
@@ -139,6 +152,7 @@ namespace Kontur.GameStats.Server
                     switch (address[1])
                     {
                         case "best-players":
+                            // /reports/best-players[/<count>] GET
                             statsApi.GetBestPlayersReport(listenerContext);
                             break; 
                         default:

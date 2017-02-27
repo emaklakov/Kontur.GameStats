@@ -78,7 +78,7 @@ namespace Kontur.GameStats.Server
         }
 
         public void PutServerInfo(HttpListenerContext listenerContext)
-        {   
+        {
             try
             {
                 var inpStream = new StreamReader(listenerContext.Request.InputStream);
@@ -88,11 +88,11 @@ namespace Kontur.GameStats.Server
 
                 if (workDb.PutServerInfo(new EndpointInfo(endPoint, serverInfo)))
                 {
-                    listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
                 }
                 else
                 {
-                    listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.BadRequest;
                 }
             }
             catch (Exception error)
@@ -100,7 +100,87 @@ namespace Kontur.GameStats.Server
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
                 Console.ResetColor();
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
+            }
+
+            listenerContext.Response.Close();
+        }
+
+        public void GetServerStats(HttpListenerContext listenerContext)
+        {
+            string statsJson = "";
+
+            listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
+            listenerContext.Response.ContentType = "application/json";
+            using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+            {
+                writer.WriteLine(statsJson);
+            }
+        }
+
+        public void GetServerMatch(HttpListenerContext listenerContext)
+        {
+            try
+            {
+                string endpoint = ExtractEndpoint(listenerContext.Request);
+                string timestamp = ExtractTimestamp(listenerContext.Request);
+
+                MatchInfo matchInfo = workDb.GetServerMatch(endpoint, timestamp);
+                string matchInfoJson = JsonConvert.SerializeObject(matchInfo);
+
+                using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
+                {
+                    writer.Write(matchInfoJson);
+                }
+
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.ContentType = "application/json";
+                listenerContext.Response.Close();
+            }
+            catch (Exception error)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                Console.ResetColor();
                 listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                listenerContext.Response.Close();
+            }  
+        }
+
+        public void PutServerMatch(HttpListenerContext listenerContext)
+        {       
+            var inpStream = new StreamReader(listenerContext.Request.InputStream);
+
+            string endpoint = ExtractEndpoint(listenerContext.Request);
+
+            if (workDb.IsExistServer(endpoint))
+            {
+                try
+                {
+                    DateTime timestamp = DateTimeOffset.Parse(ExtractTimestamp(listenerContext.Request)).UtcDateTime;
+
+                    MatchInfo matchInfo = JsonConvert.DeserializeObject<MatchInfo>(inpStream.ReadToEnd());         
+
+                    if (workDb.PutServerMatch(endpoint, timestamp, matchInfo))
+                    {
+                        listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                    }
+                    else
+                    {
+                        listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    }
+                }
+                catch (Exception error)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                    Console.ResetColor();
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                }
+            }
+            else
+            {
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
 
             listenerContext.Response.Close();
