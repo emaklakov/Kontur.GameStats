@@ -19,18 +19,21 @@ namespace Kontur.GameStats.Server
             {
                 if (!isRunning)
                 {
-                    listener.Prefixes.Clear();
-                    listener.Prefixes.Add(prefix);
-                    listener.Start();
-
-                    listenerThread = new Thread(Listen)
+                    if (WorkDB.Connect())
                     {
-                        IsBackground = true,
-                        Priority = ThreadPriority.Highest
-                    };
-                    listenerThread.Start();
-                    
-                    isRunning = true;
+                        listener.Prefixes.Clear();
+                        listener.Prefixes.Add(prefix);
+                        listener.Start();
+
+                        listenerThread = new Thread(Listen)
+                        {
+                            IsBackground = true,
+                            Priority = ThreadPriority.Highest
+                        };
+                        listenerThread.Start();
+
+                        isRunning = true;
+                    }  
                 }
             }
         }
