@@ -27,7 +27,8 @@ namespace Kontur.GameStats.Server
 
                 string serversJson = JsonConvert.SerializeObject(servers);
 
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
+                listenerContext.Response.ContentType = "application/json";
                 using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
                 {
                     writer.WriteLine(serversJson);
@@ -38,11 +39,71 @@ namespace Kontur.GameStats.Server
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
                 Console.ResetColor();
-                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
-                    writer.WriteLine(String.Empty);
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
+                listenerContext.Response.Close();
             }
-            
+        }
+
+        public void GetServerInfo(HttpListenerContext listenerContext)
+        {
+            try
+            {
+                string endpoint = ExtractEndpoint(listenerContext.Request);
+                ServerInfo serverInfo = workDb.GetServerInfo(endpoint);
+
+                if (serverInfo == null)
+                {
+                    listenerContext.Response.StatusCode = (int) HttpStatusCode.NotFound;
+                    listenerContext.Response.Close();
+                    return;
+                }
+
+                string serverInfoJson = JsonConvert.SerializeObject(serverInfo);
+
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
+                listenerContext.Response.ContentType = "application/json";
+                using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
+                {
+                    writer.Write(serverInfoJson);
+                }
+            }
+            catch (Exception error)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                Console.ResetColor();
+                listenerContext.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
+                listenerContext.Response.Close();
+            }
+        }
+
+        public void PutServerInfo(HttpListenerContext listenerContext)
+        {   
+            try
+            {
+                var inpStream = new StreamReader(listenerContext.Request.InputStream);
+
+                ServerInfo serverInfo = JsonConvert.DeserializeObject<ServerInfo>(inpStream.ReadToEnd());
+                string endPoint = ExtractEndpoint(listenerContext.Request);
+
+                if (workDb.PutServerInfo(new EndpointInfo(endPoint, serverInfo)))
+                {
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                }
+                else
+                {
+                    listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                }
+            }
+            catch (Exception error)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(String.Format("{0:dd.MM.yyyy HH:mm:ss}: {1}\r\n", DateTime.Now, error.Message));
+                Console.ResetColor();
+                listenerContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            }
+
+            listenerContext.Response.Close();
         }
 
         public void GetBestPlayersReport(HttpListenerContext listenerContext)
@@ -50,6 +111,7 @@ namespace Kontur.GameStats.Server
             string reportJson = "";
 
             listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
+            listenerContext.Response.ContentType = "application/json";
             using (var writer = new System.IO.StreamWriter(listenerContext.Response.OutputStream))
             {
                 writer.WriteLine(reportJson);
@@ -59,6 +121,17 @@ namespace Kontur.GameStats.Server
         public void HandleIncorrect(HttpListenerContext listenerContext)
         {
             listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            listenerContext.Response.Close();
+        }
+
+        private static string ExtractEndpoint(HttpListenerRequest request)
+        {
+            return request.RawUrl.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[1];
+        }
+
+        private static string ExtractTimestamp(HttpListenerRequest request)
+        {
+            return request.RawUrl.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[3];
         }
     }
 }

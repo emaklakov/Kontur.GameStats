@@ -121,6 +121,12 @@ namespace Kontur.GameStats.Server
                         {
                             case "info":
                                 // /servers/<endpoint>/info PUT, GET
+                                if (request.HttpMethod == System.Net.Http.HttpMethod.Get.Method)
+                                    statsApi.GetServerInfo(listenerContext);
+                                else if (request.HttpMethod == System.Net.Http.HttpMethod.Put.Method)
+                                    statsApi.PutServerInfo(listenerContext);
+                                else
+                                    statsApi.HandleIncorrect(listenerContext);
                                 break;
                             default:
                                 statsApi.HandleIncorrect(listenerContext);
@@ -143,15 +149,13 @@ namespace Kontur.GameStats.Server
                 else
                 {
                     listenerContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                    using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
-                        writer.WriteLine(String.Empty);
+                    listenerContext.Response.Close();
                 }
             }
             else
             {
                 listenerContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
-                    writer.WriteLine(String.Empty);
+                listenerContext.Response.Close();
             }                                                                        
 
             //var data_text = new StreamReader(
