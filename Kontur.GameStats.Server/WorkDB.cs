@@ -40,7 +40,11 @@ namespace Kontur.GameStats.Server
         {
             List<EndpointInfo> servers = new List<EndpointInfo>();
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
+
             SqlCommand dbCommand = new SqlCommand("SELECT EndPoint, Name, GameModes FROM Servers", dbConnection);
             SqlDataReader reader = dbCommand.ExecuteReader();
 
@@ -63,7 +67,11 @@ namespace Kontur.GameStats.Server
         {
             ServerInfo serverInfo = null;
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
+
             SqlCommand dbCommand = new SqlCommand("SELECT Name, GameModes FROM Servers WHERE EndPoint = @EndPoint", dbConnection);
             dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
             SqlDataReader reader = dbCommand.ExecuteReader();
@@ -92,8 +100,11 @@ namespace Kontur.GameStats.Server
             {
                 SQL = "UPDATE Servers SET Name=@Name, GameModes=@GameModes WHERE EndPoint=@EndPoint";
             }
-            
-            dbConnection.Open();
+
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
 
             SqlCommand dbCommand = new SqlCommand(SQL, dbConnection);
             dbCommand.Parameters.AddWithValue("@EndPoint", server.endpoint);
@@ -116,7 +127,10 @@ namespace Kontur.GameStats.Server
         {
             MatchInfo matchInfo = null;
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
 
             SqlCommand dbCommand = new SqlCommand("SELECT * FROM Matches WHERE EndPoint = @EndPoint AND TimeStamp = @TimeStamp", dbConnection);
             dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
@@ -137,7 +151,7 @@ namespace Kontur.GameStats.Server
             }
             reader.Close();
 
-            if (!String.IsNullOrWhiteSpace(MatchId.ToString()))
+            if (MatchId != Guid.Empty)
             {
                 dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE MatchId = @MatchId", dbConnection);
                 dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
@@ -169,7 +183,10 @@ namespace Kontur.GameStats.Server
         {
             bool result = false;
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
 
             SqlCommand dbCommand = new SqlCommand("INSERT INTO Matches VALUES (@Id, @EndPoint, @TimeStampt, @Map, @GameMode, @FragLimit, @TimeLimit, @TimeElapsed)", dbConnection);
             Guid MatchId = Guid.NewGuid();
@@ -212,7 +229,10 @@ namespace Kontur.GameStats.Server
             List<MatchInfoStat> matches = new List<MatchInfoStat>();
             List<MatchInfo.ScoreboardItem> scoreboards = new List<MatchInfo.ScoreboardItem>();
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
 
             SqlCommand dbCommand = new SqlCommand("SELECT * FROM Matches WHERE EndPoint = @EndPoint", dbConnection);
             dbCommand.Parameters.AddWithValue("@EndPoint", endpoint);
@@ -328,7 +348,11 @@ namespace Kontur.GameStats.Server
             List<BestPlayer> players = new List<BestPlayer>();
             List<MatchInfo.ScoreboardItem> scoreboards = new List<MatchInfo.ScoreboardItem>();
 
-            dbConnection.Open();
+            if (dbConnection.State == ConnectionState.Closed)
+            {
+                dbConnection.Open();
+            }
+
             SqlCommand dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE Frags >= 10 AND Kills > 0", dbConnection);
             SqlDataReader reader = dbCommand.ExecuteReader(); 
 
