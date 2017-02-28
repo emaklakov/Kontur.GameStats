@@ -254,7 +254,7 @@ namespace Kontur.GameStats.Server
             }
             reader.Close();
 
-            if (!String.IsNullOrWhiteSpace(MatchId.ToString()))
+            if (MatchId != Guid.Empty)
             {
                 dbCommand = new SqlCommand("SELECT * FROM Scoreboards WHERE MatchId = @MatchId", dbConnection);
                 dbCommand.Parameters.AddWithValue("@MatchId", MatchId);
